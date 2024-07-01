@@ -6,17 +6,35 @@ var sao = require("../enum/sao");
 
 app.post("/getThongTinNgay", (req, res) => {
     const { Can, Chi, ngayduong, ngayam, CanChiNam, CanChiThang } = req.body;
+
     const thangAm = moment(ngayam, "MM-DD-YYYY").month() + 1;
-    //lay data ngay xung khacs
+    //lay menh nam
     var menhNam = new Promise(function (resolve, reject) {
         connection.query(`SELECT  A.Ten,A.Menh,A.NguHanh,A.NghiaNguHanh from  CANCHI  A Where A.Ten = '${CanChiNam}' `, (err, rows, fields) => {
             if (err) reject(err);
             resolve(rows[0]);
         });
     });
+
     //lay data ngay xung khacs
-    var ngayxungkhac = new Promise(function (resolve, reject) {
-        connection.query(`SELECT  A.Id,A.Ten,A.Menh,A.NguHanh,A.NghiaNguHanh,A.XungKhac from  CANCHI  A Where A.Ten = '${Can + " " + Chi}' `, (err, rows, fields) => {
+    var xungkhac = new Promise(function (resolve, reject) {
+        connection.query(
+            `select C.Id,C.Ten,C.Menh,C.NguHanh,C.NghiaNguHanh
+            from xungkhac A
+            inner join canchi B on A.Id_canchi = B.Id
+            inner join canchi C on A.Id_xungkhac = C.Id
+             WHERE B.Ten = ?`,
+            [Can + " " + Chi],
+            (err, rows, fields) => {
+                if (err) reject(err);
+                resolve(rows);
+            }
+        );
+    });
+
+    //lay data ngay
+    var menhngay = new Promise(function (resolve, reject) {
+        connection.query(`SELECT  A.Id,A.Ten,A.Menh,A.NguHanh,A.NghiaNguHanh from  CANCHI  A Where A.Ten = '${Can + " " + Chi}' `, (err, rows, fields) => {
             if (err) reject(err);
             resolve(rows[0]);
         });
@@ -69,15 +87,15 @@ app.post("/getThongTinNgay", (req, res) => {
         connection.query(
             `Select A.Ten,A.TinhChat
             From (
-            Select A.ten as chi, B.Ten,B.TinhChat
+                Select A.ten as chi, B.Ten,B.TinhChat
                 From Chi  A 
-            Inner Join truc B on A.id  = B.Id + ?
-            Union All
-            Select A.ten as chi, B.Ten,B.TinhChat
-            From Chi  A 
-            Inner Join truc B on (12-?)+A.id  = B.Id
-        )A
-		Where  A.chi RLIKE ?`,
+                Inner Join truc B on A.id  = B.Id + ?
+                Union All
+                Select A.ten as chi, B.Ten,B.TinhChat
+                From Chi  A 
+                Inner Join truc B on (12-?)+A.id  = B.Id
+            )A
+            Where  A.chi RLIKE ?`,
             [thangAm + 1, thangAm + 1, Chi],
             (err, rows, fields) => {
                 if (err) reject(err);
@@ -114,7 +132,7 @@ app.post("/getThongTinNgay", (req, res) => {
             [Can + " " + Chi],
             (err, rows, fields) => {
                 if (err) reject(err);
-                const index = rows[0].Id;
+                const index = rows.length > 0 ? rows[0].Id : "";
                 if (index >= 30 && index <= 45) xuathanh.hacthan = "Ở trên trời (khỏi lo đi !!!)";
                 else if (index > 45 && index <= 51) xuathanh.hacthan = "Hướng Đông Bắc";
                 else if (index > 51 && index <= 56) xuathanh.hacthan = "Hướng chính Đông";
@@ -130,7 +148,7 @@ app.post("/getThongTinNgay", (req, res) => {
     });
     //#endregion
 
-    Promise.all([ngayxungkhac, menhNam, than, truc, hac]).then((data) => {
+    Promise.all([menhngay, menhNam, than, truc, hac, xungkhac]).then((data) => {
         //xu ly cat hung tinh
         const cathungtinh = new Promise(function (resolve, reject) {
             connection.query(
@@ -166,13 +184,29 @@ app.post("/getThongTinNgay", (req, res) => {
         });
         var cattinh = [];
         var hungtinh = [];
+
         cathungtinh
             .then((data) => {
                 hungtinh = data.filter((i) => i.CatTinh == 0);
                 cattinh = data.filter((i) => i.CatTinh != 0);
             })
             .finally(() => {
-                res.send({ ngayxungkhac: data[0], menhnam: data[1], sao: sao[index], than: data[2], truc: data[3], xuathanh: data[4], cattinh: cattinh, hungtinh: hungtinh });
+                res.send({
+                    menhngay: {
+                        Ten: data[0] ? data[0].Ten : "",
+                        Menh: data[0] ? data[0].Menh : "",
+                        NguHanh: data[0] ? data[0].NguHanh : "",
+                        NghiaNguHanh: data[0] ? data[0].NghiaNguHanh : "",
+                    },
+                    xungkhac: data[5],
+                    menhnam: data[1],
+                    sao: { Ten: sao[index] },
+                    than: data[2],
+                    truc: data[3],
+                    xuathanh: data[4],
+                    cattinh: cattinh,
+                    hungtinh: hungtinh,
+                });
             });
     });
 });
