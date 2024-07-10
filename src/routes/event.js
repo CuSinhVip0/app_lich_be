@@ -52,7 +52,6 @@ app.post("/getEvents", (req, res) => {
 });
 app.post("/getDateEventToSetBookmark", (req, res) => {
     const { Nam, Thang, Key } = req.body;
-
     if (Key == 3) {
         const date1 = moment()
             .set("month", Thang - 1)
@@ -130,16 +129,19 @@ app.post("/getDateEventToSetBookmark", (req, res) => {
 
                 const ListSolar = rows.filter((e) => e.DuongLich == 1);
                 const ListLunar = rows.filter((e) => e.DuongLich == 0);
+
                 for (var i = date_2.get("month") + 1; i <= date3.get("month") + 1; i++) {
-                    for (var j = 1; j <= new Date(Nam, Thang, 0).getDate(); j++) {
-                        const lunar = lunarDate.convertSolar2Lunar(j, i, Nam, 7); // chuyen ngay am sang ngay duong
+                    var nam = moment(date_2).add(i, "month").get("year");
+
+                    for (var j = 1; j <= new Date(nam, i, 0).getDate(); j++) {
+                        const lunar = lunarDate.convertSolar2Lunar(j, i, nam, 7); // chuyen ngay am sang ngay duong
                         const item = ListLunar.filter((x) => x.Thang == lunar[1] && x.Ngay == lunar[0] && x.DuongLich == 0); // lay ra cac ngay co su kien
                         if (item.length > 0) {
                             ListSolar.push({
                                 DuongLich: 0,
                                 Ngay: j,
                                 Thang: i,
-                                Nam: Nam,
+                                Nam: nam,
                             });
                         }
                     }
@@ -240,7 +242,6 @@ app.post("/insertEvent", (req, res) => {
             `,
             [Ten, Ngay, Thang, Nam, GioBatDau, GioKetThuc, ChiTiet, HandleRepeat, Remind, DuongLich, ToDay, ToMonth, ToYear],
             (err, rows, fields) => {
-                console.log();
                 res.send({ status: "successfully", message: "Sự kiện của bạn đã được lưu 😘", id: rows.insertId });
             }
         );
@@ -260,9 +261,22 @@ app.post("/getTask", (req, res) => {
                     Select A.Id as IdMain, A.Ten, A.ChiTiet, A.DuongLich, A.Ngay, A.Thang, A.Nam, A.ToDay, A.ToMonth, A.ToYear, A.GioBatDau, A.GioKetThuc, A.HandleRepeat, A.Remind, B.Name, B.Id
                     From user_sukien A join loai_sukien B on A.Id_type_event = B.Id
                     Where A.Status = 1
-                    And A.Ngay = ?
-                    And A.Thang = ?
-                    And A.Nam = ?
+                    And 
+                    (
+                        (
+                            A.Ngay = ?
+                            And A.Thang = ?
+                            And A.Nam = ?
+                            And A.DuongLich = 1
+                        )
+                            or
+                        (
+                            A.Ngay = ?
+                            And A.Thang = ?
+                            And A.Nam = ?
+                            And A.DuongLich = 0
+                        )
+                    )
 
                     UNION 
                     
@@ -273,17 +287,19 @@ app.post("/getTask", (req, res) => {
                         (
                             B.Ngay = ?
                             And B.Thang = ?
+                            And B.DuongLich = 1
                         ) 
                         Or
                         (
                             B.Ngay = ?
                             And B.Thang = ?
+                            And B.DuongLich = 0
                         )
                     )
                 ) A
                 Order by A.GioBatDau ASC, A.GioKetThuc ASC 
             `,
-            [Ngay, Thang, Nam, Ngay, Thang, Lunar[0], Lunar[1]],
+            [Ngay, Thang, Nam, Lunar[0], Lunar[1], Lunar[2], Ngay, Thang, Lunar[0], Lunar[1]],
             (err, rows, fields) => {
                 if (err) {
                     console.log(err);
