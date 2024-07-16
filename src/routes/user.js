@@ -126,7 +126,6 @@ app.post("/getInforFromDatabase", (req, res) => {
 });
 
 //#region  setting
-
 app.post("/updateSettingtoDataBase", (req, res) => {
     const { Type, Value, Id_Platform } = req.body;
     try {

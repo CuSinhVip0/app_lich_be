@@ -3,6 +3,7 @@ const app = express();
 const connection = require("../services/index");
 var moment = require("moment");
 var sao = require("../enum/sao");
+const LunarDate = require("../utils/lunarDate");
 
 app.post("/getThongTinNgay", (req, res) => {
     const { Can, Chi, ngayduong, ngayam, CanChiNam, CanChiThang } = req.body;
@@ -209,6 +210,137 @@ app.post("/getThongTinNgay", (req, res) => {
                 });
             });
     });
+});
+
+app.post("/getGoodDay", (req, res) => {
+    const { Id_Su, TimeStart, TimeEnd, Id_User } = req.body;
+    try {
+        connection.query(
+            `
+                Select A.Id, A.Id_User, A.Name, A.Email, A.Birth, A.Gender, A.Phone, A.Address, A.Job, A.CungMenh, A.Id_NguHanh, A.Menh, A.NguHanh
+                From 
+                (
+                    Select A.Id, A.Id_User, A.Name, A.Email, A.Birth, A.Gender, A.Phone, A.Address, A.Job, A.CungMenh, B.Id as Id_NguHanh, B.Menh as Menh, B.Nguhanh as NguHanh
+                    From user_infor A
+                    Left join canchi B on A.NguHanh = B.Id 
+                    Where A.Id_User = ? And A.State = 0
+                ) A
+                Limit 1
+            `,
+            [Id_User],
+            (err, rows, fields) => {
+                if (err) {
+                    console.log(err);
+                    return res.status(500).send({ status: "error" });
+                }
+                if (rows.length == 0) {
+                    return res.status(500).send({ status: "error" });
+                }
+                var item = rows[0];
+                // trường hợp chưa có ngày sinh
+                if (item.Birth != null) {
+                    try {
+                        const dateStart = TimeStart.split("-");
+                        const dateEnd = TimeEnd.split("-");
+                        var lunarTimeStart = LunarDate.convertSolar2Lunar(parseInt(dateStart[2]), parseInt(dateStart[1]), parseInt(dateStart[0]), 7);
+                        var lunarTimeEnd = LunarDate.convertSolar2Lunar(parseInt(dateEnd[2]), parseInt(dateEnd[1]), parseInt(dateEnd[0]), 7);
+                        connection.query(
+                            `
+                                Select A.Id,A.Thang, A.IdCanChi, A.TenCanChi, A.Menh, A.NguHanh, A.NghiaNguHanh, A.IdSu, A.TenSu
+                                From
+                                (
+                                    Select A.Id, A.Thang, B.Id as IdCanChi, B.Ten as TenCanChi, B.Menh, B.NguHanh, B.NghiaNguHanh, C.Id as IdSu, C.Ten as TenSu
+                                    From ngay_tot A
+                                    Inner join canchi B on A.Id_CanChi = B.Id
+                                    Inner join su C on A.Id_Su = C.Id
+                                    Where A.Id_Su = ? and A.Thang in (?,?,?)  and  B.Menh in (?)
+                                ) A
+                                 Order by A.Thang and A.IdCanChi
+                            `,
+                            [Id_Su, lunarTimeStart[1], lunarTimeStart[1] + 1, lunarTimeEnd[1], LunarDate.getMenh(item.Menh)],
+                            (err, rows, fields) => {
+                                if (err) {
+                                    console.log(err);
+                                    return res.status(500).send({ status: "error" });
+                                }
+                                var length = 0;
+                                var arrAll = [];
+                                var indexYear = 0;
+                                for (var i = parseInt(dateStart[1]); i <= parseInt(dateEnd[1]); i++) {
+                                    var start = i == parseInt(dateStart[1]) ? parseInt(dateStart[2]) : 1;
+                                    var end = i == parseInt(dateEnd[1]) ? parseInt(dateEnd[2]) : 31;
+                                    for (var j = start; j <= end; j++) {
+                                        const lunar = LunarDate.convertSolar2Lunar(j, i, parseInt(dateStart[0]) + indexYear, 7);
+                                        const lunarcanchi = LunarDate.getCanDay(LunarDate.jdn(j, i, parseInt(dateStart[0]) + indexYear));
+                                        const lunarData = rows.find((i) => i.Thang == lunar[1] && i.TenCanChi == lunarcanchi);
+                                        if (lunarData)
+                                            arrAll.push({
+                                                ...lunarData,
+                                                SonarDate: parseInt(dateStart[0]) + indexYear + "-" + i + "-" + j,
+                                            });
+                                    }
+                                }
+                                return res.status(200).send({ status: "oke", result: arrAll, length: length });
+                            }
+                        );
+                    } catch (error) {
+                        return res.status(500).send({ status: "error" });
+                    }
+                } else {
+                    try {
+                        const dateStart = TimeStart.split("-");
+                        const dateEnd = TimeEnd.split("-");
+                        var lunarTimeStart = LunarDate.convertSolar2Lunar(parseInt(dateStart[2]), parseInt(dateStart[1]), parseInt(dateStart[0]), 7);
+                        var lunarTimeEnd = LunarDate.convertSolar2Lunar(parseInt(dateEnd[2]), parseInt(dateEnd[1]), parseInt(dateEnd[0]), 7);
+                        connection.query(
+                            `
+                                Select A.Id,A.Thang, A.IdCanChi, A.TenCanChi, A.Menh, A.NguHanh, A.NghiaNguHanh, A.IdSu, A.TenSu
+                                From
+                                (
+                                    Select A.Id, A.Thang, B.Id as IdCanChi, B.Ten as TenCanChi, B.Menh, B.NguHanh, B.NghiaNguHanh, C.Id as IdSu, C.Ten as TenSu
+                                    From ngay_tot A
+                                    Inner join canchi B on A.Id_CanChi = B.Id
+                                    Inner join su C on A.Id_Su = C.Id
+                                    Where A.Id_Su = ? and A.Thang in (?,?,?) 
+                                ) A
+                                 Order by A.Thang and A.IdCanChi
+                            `,
+                            [Id_Su, lunarTimeStart[1], lunarTimeStart[1] + 1, lunarTimeEnd[1]],
+                            (err, rows, fields) => {
+                                if (err) {
+                                    console.log(err);
+                                    return res.status(500).send({ status: "error" });
+                                }
+                                var length = 0;
+                                var arrAll = [];
+                                var indexYear = 0;
+                                for (var i = parseInt(dateStart[1]); i <= parseInt(dateEnd[1]); i++) {
+                                    var start = i == parseInt(dateStart[1]) ? parseInt(dateStart[2]) : 1;
+                                    var end = i == parseInt(dateEnd[1]) ? parseInt(dateEnd[2]) : 31;
+                                    for (var j = start; j <= end; j++) {
+                                        const lunar = LunarDate.convertSolar2Lunar(j, i, parseInt(dateStart[0]) + indexYear, 7);
+                                        const lunarcanchi = LunarDate.getCanDay(LunarDate.jdn(j, i, parseInt(dateStart[0]) + indexYear));
+                                        const lunarData = rows.find((i) => i.Thang == lunar[1] && i.TenCanChi == lunarcanchi);
+                                        if (lunarData)
+                                            arrAll.push({
+                                                ...lunarData,
+                                                SonarDate: parseInt(dateStart[0]) + indexYear + "-" + i + "-" + j,
+                                            });
+                                    }
+                                }
+                                return res.status(200).send({ status: "oke", result: arrAll, length: length });
+                            }
+                        );
+                    } catch (error) {
+                        return res.status(500).send({ status: "error" });
+                    }
+                }
+            }
+        );
+    } catch (err) {
+        console.log(err);
+        return res.status(500).send({ status: "error" });
+    }
 });
 
 module.exports = app;

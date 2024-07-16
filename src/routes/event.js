@@ -83,7 +83,7 @@ app.post("/getDateEventToSetBookmark", (req, res) => {
                 UNION 
 
                 Select B.DuongLich, B.Ngay,B.Thang,B.Nam, B.Id_type_event 
-                From user_sukien  B
+                From user_event  B
                 Where B.Thang in (?,?,?,?,?)
                 And B.Nam in (?,?,?,?,?)
 
@@ -179,7 +179,7 @@ app.post("/getDateEventToSetBookmark", (req, res) => {
                 UNION 
 
                 Select B.DuongLich, B.Ngay,B.Thang,B.Nam, B.Id_type_event 
-                From user_sukien  B
+                From user_event  B
                 Where B.Thang = ?
                 And B.Nam = ?
 
@@ -237,7 +237,7 @@ app.post("/insertEvent", (req, res) => {
     try {
         connection.query(
             `
-                Insert into user_sukien (Ten,Ngay,Thang,Nam,GioBatDau,GioKetThuc,ChiTiet,HandleRepeat,Remind,DuongLich,ToDay,ToMonth,ToYear) 
+                Insert into user_event (Ten,Ngay,Thang,Nam,GioBatDau,GioKetThuc,ChiTiet,HandleRepeat,Remind,DuongLich,ToDay,ToMonth,ToYear) 
                 Values (?,?,?,?,?,?,?,?,?,?,?,?,?)
             `,
             [Ten, Ngay, Thang, Nam, GioBatDau, GioKetThuc, ChiTiet, HandleRepeat, Remind, DuongLich, ToDay, ToMonth, ToYear],
@@ -259,7 +259,7 @@ app.post("/getTask", (req, res) => {
                 From
                 (
                     Select A.Id as IdMain, A.Ten, A.ChiTiet, A.DuongLich, A.Ngay, A.Thang, A.Nam, A.ToDay, A.ToMonth, A.ToYear, A.GioBatDau, A.GioKetThuc, A.HandleRepeat, A.Remind, B.Name, B.Id
-                    From user_sukien A join loai_sukien B on A.Id_type_event = B.Id
+                    From user_event A join loai_sukien B on A.Id_type_event = B.Id
                     Where A.Status = 1
                     And 
                     (
