@@ -233,14 +233,14 @@ app.get("/getAllEvent", (req, res) => {
 });
 
 app.post("/insertEvent", (req, res) => {
-    const { Ten, Ngay, Thang, Nam, GioBatDau, GioKetThuc, ChiTiet, HandleRepeat, Remind, DuongLich, ToDay, ToMonth, ToYear } = req.body;
+    const { Ten, Ngay, Thang, Nam, GioBatDau, GioKetThuc, ChiTiet, HandleRepeat, Remind, DuongLich, ToDay, ToMonth, ToYear, Type, Id_User } = req.body;
     try {
         connection.query(
             `
-                Insert into user_event (Ten,Ngay,Thang,Nam,GioBatDau,GioKetThuc,ChiTiet,HandleRepeat,Remind,DuongLich,ToDay,ToMonth,ToYear) 
-                Values (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                Insert into user_event (Ten,Ngay,Thang,Nam,GioBatDau,GioKetThuc,ChiTiet,HandleRepeat,Remind,DuongLich,ToDay,ToMonth,ToYear,Id_type_event,Id_User) 
+                Values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             `,
-            [Ten, Ngay, Thang, Nam, GioBatDau, GioKetThuc, ChiTiet, HandleRepeat, Remind, DuongLich, ToDay, ToMonth, ToYear],
+            [Ten, Ngay, Thang, Nam, GioBatDau, GioKetThuc, ChiTiet, HandleRepeat, Remind, DuongLich, ToDay, ToMonth, ToYear, Type, Id_User],
             (err, rows, fields) => {
                 res.send({ status: "successfully", message: "Sự kiện của bạn đã được lưu 😘", id: rows.insertId });
             }
@@ -260,7 +260,7 @@ app.post("/getTask", (req, res) => {
                 (
                     Select A.Id as IdMain, A.Ten, A.ChiTiet, A.DuongLich, A.Ngay, A.Thang, A.Nam, A.ToDay, A.ToMonth, A.ToYear, A.GioBatDau, A.GioKetThuc, A.HandleRepeat, A.Remind, B.Name, B.Id
                     From user_event A join loai_sukien B on A.Id_type_event = B.Id
-                    Where A.Status = 1
+                    Where A.State = 0
                     And 
                     (
                         (

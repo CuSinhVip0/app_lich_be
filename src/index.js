@@ -1,6 +1,6 @@
 const express = require("express");
 const app = express();
-const port = 3001;
+const port = 3000;
 const cors = require("cors");
 app.use(cors());
 app.use(express.json()); //body-parser
@@ -15,12 +15,14 @@ const user = require("./routes/user.js");
 const post = require("./routes/post.js");
 const dev = require("./routes/dev.js");
 const admin = require("./routes/admin.js");
+const system = require("./routes/system.js");
 app.use("/api/infor", infor);
 app.use("/api/event", event);
 app.use("/api/user", user);
 app.use("/api/post", post);
 app.use("/api/dev", dev);
 app.use("/api/admin", admin);
+app.use("/api/system", system);
 app.listen(port, () => {
     console.log(`Example app listening on port ${port}`);
 });

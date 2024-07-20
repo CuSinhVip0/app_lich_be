@@ -106,7 +106,7 @@ app.post("/getInforFromDatabase", (req, res) => {
     try {
         connection.query(
             `
-               Select A.Id, A.Id_User, A.Name, A.UrlPic, A.Email, A.Birth, A.Gender, A.Phone, A.Address, A.Job, A.NguHanh, A.CungMenh
+               Select A.Id_User, A.Name, A.UrlPic, A.Email, A.Birth, A.Gender, A.Phone, A.Address, A.Job, A.NguHanh, A.CungMenh
                From user_infor A
                Where A.Id_User = ?
             `,

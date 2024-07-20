@@ -36,6 +36,78 @@ app.post("/login", (req, res) => {
 });
 //#endregion
 
+//#region  Quan ly quyen
+app.post("/Sinh_spQuanLyQuyen_List", (req, res) => {
+    const { OfficerId } = req.body;
+    try {
+        connection.query(
+            `
+                Call Sinh_spQuanLyQuyen_List (?) 
+            `,
+            [OfficerId],
+            (err, rows, fields) => {
+                if (err) {
+                    console.log("🚀 ~ app.Sinh_spQuanLyQuyen_List ~ err:", err);
+                    return res.status(500).send({ status: "error" });
+                }
+                if (rows[0].length > 0 && rows[0][0].message) return res.status(200).send({ status: "error", data: rows[0][0].message });
+                return res.status(200).send({ status: "oke", data: rows[0] });
+            }
+        );
+    } catch (err) {
+        console.log("🚀 ~ app.Sinh_spQuanLyQuyen_List ~ err:", err);
+        return res.status(500).send({ status: "error" });
+    }
+});
+
+app.post("/Sinh_spQuanLyQuyen_Save", (req, res) => {
+    const { Adds, Views, Deletes, Edits, Specials, OfficerId, Id } = req.body;
+    try {
+        connection.query(
+            `
+                Call Sinh_spQuanLyQuyen_Save (?,?,?,?,?,?,?)
+            `,
+            [Adds, Views, Deletes, Edits, Specials, OfficerId, Id],
+            (err, rows, fields) => {
+                if (err) {
+                    console.log("🚀 ~ app.Sinh_spQuanLyQuyen_Save ~ err:", err);
+                    return res.status(500).send({ status: "error" });
+                }
+                if (rows[0] && rows[0][0].message) return res.status(200).send({ status: "error", data: rows[0][0].message });
+                return res.status(200).send({ status: "oke" });
+            }
+        );
+    } catch (err) {
+        console.log("🚀 ~ app.Sinh_spQuanLyQuyen_Save ~ err:", err);
+        return res.status(500).send({ status: "error" });
+    }
+});
+
+app.post("/Sinh_spQuanLyQuyen_Delete", (req, res) => {
+    const { OfficerId, DeleteBy } = req.body;
+    try {
+        +connection.query(
+            `
+               	Call Sinh_spQuanLyQuyen_Delete (?,?)
+            `,
+            [DeleteBy, OfficerId],
+            (err, rows, fields) => {
+                if (err) {
+                    console.log("🚀 ~ app.Sinh_spQuanLyQuyen_Delete ~ err:", err);
+                    return res.status(500).send({ status: "error" });
+                }
+                if (rows[0] && rows[0][0].message) return res.status(200).send({ status: "error", data: rows[0][0].message });
+                if (rows.affectedRows == 1) return res.status(200).send({ status: "oke" });
+                return res.status(200).send({ status: "error" });
+            }
+        );
+    } catch (err) {
+        console.log("🚀 ~ app.Sinh_spQuanLyQuyen_Delete ~ err:", err);
+        return res.status(500).send({ status: "error" });
+    }
+});
+//#endregion
+
 //#region Quan ly nhan su
 app.post("/Sinh_spQuanLyNhanSu_List", (req, res) => {
     const { OfficerId } = req.body;

@@ -11,7 +11,7 @@ app.post("/getThongTinNgay", (req, res) => {
     const thangAm = moment(ngayam, "MM-DD-YYYY").month() + 1;
     //lay menh nam
     var menhNam = new Promise(function (resolve, reject) {
-        connection.query(`SELECT  A.Ten,A.Menh,A.NguHanh,A.NghiaNguHanh from  CANCHI  A Where A.Ten = '${CanChiNam}' `, (err, rows, fields) => {
+        connection.query(`SELECT  A.Ten,A.Menh,A.NguHanh,A.NghiaNguHanh from  CANCHI  A Where A.Ten = '${CanChiNam}'and A.State = 0 `, (err, rows, fields) => {
             if (err) reject(err);
             resolve(rows[0]);
         });
@@ -24,7 +24,7 @@ app.post("/getThongTinNgay", (req, res) => {
             from xungkhac A
             inner join canchi B on A.Id_canchi = B.Id
             inner join canchi C on A.Id_xungkhac = C.Id
-             WHERE B.Ten = ?`,
+             WHERE B.Ten =? and A.State = 0`,
             [Can + " " + Chi],
             (err, rows, fields) => {
                 if (err) reject(err);
@@ -64,7 +64,7 @@ app.post("/getThongTinNgay", (req, res) => {
     var than = new Promise(function (resolve, reject) {
         connection.query(
             `Select A.Ten, A.IsHoangDao
-				From (
+			From (
 				Select A.ten as chi, B.Ten, B.IsHoangDao
 					From Chi  A 
 				Inner Join HOANGDAO B on A.id  = B.Id + ?
@@ -73,7 +73,7 @@ app.post("/getThongTinNgay", (req, res) => {
 				From Chi  A 
 				Inner Join HOANGDAO B on (12-?)+A.id  = B.Id
 			)A
-		Where A.chi = ?`,
+		    Where A.chi = ?`,
             [thanOptions, thanOptions, Chi],
             (err, rows, fields) => {
                 if (err) reject(err);
@@ -217,10 +217,10 @@ app.post("/getGoodDay", (req, res) => {
     try {
         connection.query(
             `
-                Select A.Id, A.Id_User, A.Name, A.Email, A.Birth, A.Gender, A.Phone, A.Address, A.Job, A.CungMenh, A.Id_NguHanh, A.Menh, A.NguHanh
+                Select A.Id_User, A.Name, A.Email, A.Birth, A.Gender, A.Phone, A.Address, A.Job, A.CungMenh, A.Id_NguHanh, A.Menh, A.NguHanh
                 From 
                 (
-                    Select A.Id, A.Id_User, A.Name, A.Email, A.Birth, A.Gender, A.Phone, A.Address, A.Job, A.CungMenh, B.Id as Id_NguHanh, B.Menh as Menh, B.Nguhanh as NguHanh
+                    Select A.Id_User, A.Name, A.Email, A.Birth, A.Gender, A.Phone, A.Address, A.Job, A.CungMenh, B.Id as Id_NguHanh, B.Menh as Menh, B.Nguhanh as NguHanh
                     From user_infor A
                     Left join canchi B on A.NguHanh = B.Id 
                     Where A.Id_User = ? And A.State = 0
@@ -251,9 +251,9 @@ app.post("/getGoodDay", (req, res) => {
                                 (
                                     Select A.Id, A.Thang, B.Id as IdCanChi, B.Ten as TenCanChi, B.Menh, B.NguHanh, B.NghiaNguHanh, C.Id as IdSu, C.Ten as TenSu
                                     From ngay_tot A
-                                    Inner join canchi B on A.Id_CanChi = B.Id
-                                    Inner join su C on A.Id_Su = C.Id
-                                    Where A.Id_Su = ? and A.Thang in (?,?,?)  and  B.Menh in (?)
+                                    Inner join canchi B on A.Id_CanChi = B.Id and B.State = 0
+                                    Inner join su C on A.Id_Su = C.Id and C.State = 0
+                                    Where A.Id_Su = ? and A.Thang in (?,?,?)  and  B.Menh in (?) and A.State = 0
                                 ) A
                                  Order by A.Thang and A.IdCanChi
                             `,
@@ -299,9 +299,9 @@ app.post("/getGoodDay", (req, res) => {
                                 (
                                     Select A.Id, A.Thang, B.Id as IdCanChi, B.Ten as TenCanChi, B.Menh, B.NguHanh, B.NghiaNguHanh, C.Id as IdSu, C.Ten as TenSu
                                     From ngay_tot A
-                                    Inner join canchi B on A.Id_CanChi = B.Id
-                                    Inner join su C on A.Id_Su = C.Id
-                                    Where A.Id_Su = ? and A.Thang in (?,?,?) 
+                                    Inner join canchi B on A.Id_CanChi = B.Id and B.State = 0
+                                    Inner join su C on A.Id_Su = C.Id and C.State = 0
+                                    Where A.Id_Su = ? and A.Thang in (?,?,?)  and A.State = 0
                                 ) A
                                  Order by A.Thang and A.IdCanChi
                             `,
@@ -339,6 +339,23 @@ app.post("/getGoodDay", (req, res) => {
         );
     } catch (err) {
         console.log(err);
+        return res.status(500).send({ status: "error" });
+    }
+});
+
+app.get("/getInforCungHoangDao", (req, res) => {
+    try {
+        connection.query(
+            `
+                Select * from cunghoangdao
+            `,
+            (err, rows, fields) => {
+                if (err) return res.status(500).send({ status: "error" });
+                return res.status(200).send({ status: "oke", data: rows });
+            }
+        );
+    } catch (error) {
+        console.log("🚀 ~ app.post ~ error:", error);
         return res.status(500).send({ status: "error" });
     }
 });
