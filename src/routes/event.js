@@ -7,7 +7,8 @@ app.post("/getEvents", (req, res) => {
     const { nam } = req.body;
     connection.query(
         `select  A.*
-        from sukien  A
+        from sukien  A 
+        Where A.State = 0
         ORDER By A.Thang ASC, A.Ngay ASC`,
         (err, rows, fields) => {
             if (err) res.status(500).send(err);
@@ -51,7 +52,7 @@ app.post("/getEvents", (req, res) => {
     );
 });
 app.post("/getDateEventToSetBookmark", (req, res) => {
-    const { Nam, Thang, Key } = req.body;
+    const { Nam, Thang, Key, IdUser } = req.body;
     if (Key == 3) {
         const date1 = moment()
             .set("month", Thang - 1)
@@ -77,21 +78,21 @@ app.post("/getDateEventToSetBookmark", (req, res) => {
 
                 Select  A.DuongLich, A.Ngay, A.Thang, A.Nam, A.Id_type_event
                 From sukien  A
-                Where A.Thang in (?,?,?,?,?)
+                Where A.Thang in (?,?,?,?,?) and A.State = 0 
                 And A.DuongLich = 1
 
                 UNION 
 
                 Select B.DuongLich, B.Ngay,B.Thang,B.Nam, B.Id_type_event 
                 From user_event  B
-                Where B.Thang in (?,?,?,?,?)
+                Where B.Thang in (?,?,?,?,?) and B.State = 0 and  B.Id_User = ?
                 And B.Nam in (?,?,?,?,?)
 
                 UNION
 
                 Select C.DuongLich, C.Ngay,C.Thang,C.Nam, C.Id_type_event
                 From sukien C
-                Where C.Thang  between ? and ?
+                Where C.Thang  between ? and ? and C.State = 0
                 And C.DuongLich = 0
             ) A
             ORDER By A.Thang ASC,A.Ngay ASC
@@ -104,6 +105,7 @@ app.post("/getDateEventToSetBookmark", (req, res) => {
                 date2.get("month") + 1,
                 date3.get("month") + 1,
 
+                IdUser,
                 //
                 date_2.get("month") + 1,
                 date_1.get("month") + 1,
@@ -131,9 +133,8 @@ app.post("/getDateEventToSetBookmark", (req, res) => {
                 const ListLunar = rows.filter((e) => e.DuongLich == 0);
 
                 for (var i = date_2.get("month") + 1; i <= date3.get("month") + 1; i++) {
-                    var nam = moment(date_2).add(i, "month").get("year");
-
-                    for (var j = 1; j <= new Date(nam, i, 0).getDate(); j++) {
+                    var nam = moment(date_2).add(1, "month").get("year");
+                    for (var j = 1; j <= 31; j++) {
                         const lunar = lunarDate.convertSolar2Lunar(j, i, nam, 7); // chuyen ngay am sang ngay duong
                         const item = ListLunar.filter((x) => x.Thang == lunar[1] && x.Ngay == lunar[0] && x.DuongLich == 0); // lay ra cac ngay co su kien
                         if (item.length > 0) {
@@ -142,6 +143,7 @@ app.post("/getDateEventToSetBookmark", (req, res) => {
                                 Ngay: j,
                                 Thang: i,
                                 Nam: nam,
+                                Id_type_event: item[0].Id_type_event,
                             });
                         }
                     }
@@ -173,27 +175,27 @@ app.post("/getDateEventToSetBookmark", (req, res) => {
            (
                 Select  A.DuongLich, A.Ngay, A.Thang, A.Nam, A.Id_type_event 
                 From sukien  A
-                Where A.Thang  = ?
+                Where A.Thang  = ? and A.State = 0
                 And A.DuongLich = 1
 
                 UNION 
 
                 Select B.DuongLich, B.Ngay,B.Thang,B.Nam, B.Id_type_event 
                 From user_event  B
-                Where B.Thang = ?
+                Where B.Thang = ? and B.State = 0  and  B.Id_User = ?
                 And B.Nam = ?
 
                 UNION
 
                 Select C.DuongLich, C.Ngay,C.Thang,C.Nam, C.Id_type_event
                 From sukien C
-                Where C.Thang  in (?)
+                Where C.Thang  in (?) and C.State = 0
                 And C.DuongLich = 0
 
             ) A
             ORDER By A.Thang ASC,A.Ngay ASC
         `,
-            [date.get("month") + 1, date.get("month") + 1, date.get("year"), [LunarBegin[1], LunarEnd[1]]],
+            [date.get("month") + 1, date.get("month") + 1, IdUser, date.get("year"), [LunarBegin[1], LunarEnd[1]]],
             (err, rows, fields) => {
                 if (err) {
                     console.log(err);
@@ -250,7 +252,8 @@ app.post("/insertEvent", (req, res) => {
     }
 });
 app.post("/getTask", (req, res) => {
-    const { Ngay, Thang, Nam } = req.body;
+    const { Ngay, Thang, Nam, IdUser } = req.body;
+
     const Lunar = lunarDate.convertSolar2Lunar(Ngay, Thang, Nam, 7);
     try {
         connection.query(
@@ -259,8 +262,8 @@ app.post("/getTask", (req, res) => {
                 From
                 (
                     Select A.Id as IdMain, A.Ten, A.ChiTiet, A.DuongLich, A.Ngay, A.Thang, A.Nam, A.ToDay, A.ToMonth, A.ToYear, A.GioBatDau, A.GioKetThuc, A.HandleRepeat, A.Remind, B.Name, B.Id
-                    From user_event A join loai_sukien B on A.Id_type_event = B.Id
-                    Where A.State = 0
+                    From user_event A join loai_sukien B on A.Id_type_event = B.Id 
+                    Where A.State = 0 and  A.Id_User = ?
                     And 
                     (
                         (
@@ -299,7 +302,7 @@ app.post("/getTask", (req, res) => {
                 ) A
                 Order by A.GioBatDau ASC, A.GioKetThuc ASC 
             `,
-            [Ngay, Thang, Nam, Lunar[0], Lunar[1], Lunar[2], Ngay, Thang, Lunar[0], Lunar[1]],
+            [IdUser, Ngay, Thang, Nam, Lunar[0], Lunar[1], Lunar[2], Ngay, Thang, Lunar[0], Lunar[1]],
             (err, rows, fields) => {
                 if (err) {
                     console.log(err);
@@ -326,6 +329,7 @@ app.post("/getTask", (req, res) => {
             }
         );
     } catch (err) {
+        console.log(err);
         res.send({ status: "error", result: "Xảy ra lỗi, vui lòng thử lại 😥" });
     }
 });

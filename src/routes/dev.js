@@ -31,4 +31,20 @@ app.post("/updateSu", (req, res) => {
     }
 });
 
+// const dbInfor = {
+//     host: "sql12.freemysqlhosting.net",
+//     user: "sql12721756",
+//     password: "ZfFYgzVWu6",
+//     database: "sql12721756",
+//     dateStrings: true,
+// };
+// const mysql = require("mysql");
+// const x = mysql.createConnection(dbInfor);
+// app.get("/getAllSu2", (req, res) => {
+//     x.query(`select * from su`, (err, rows, fields) => {
+//         if (err) res.status(500).send(err);
+//         res.status(200).send(rows);
+//     });
+// });
+
 module.exports = app;
