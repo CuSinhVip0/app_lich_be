@@ -3,7 +3,7 @@ const app = express();
 
 const connection = require("../services/index");
 
-app.post("/updatePosttoDataBase", (req, res) => {
+app.post("/LV_spUpdatePosttoDataBase", (req, res) => {
     const { Title, Type, UrlImages, Id_User } = req.body;
     try {
         connection.query(
@@ -103,7 +103,7 @@ app.post("/getPostFromDataBase", (req, res) => {
 });
 
 //#region comment
-app.post("/updateCommenttoDataBase", (req, res) => {
+app.post("/LV_insertCommenttoDataBase", (req, res) => {
     const { Id_Post, Id_User, Content, Level } = req.body;
     try {
         connection.query(
@@ -165,7 +165,7 @@ app.post("/getCommentFromDataBase", (req, res) => {
 });
 //#endregions
 
-app.post("/updateLikeOfPosttoDataBase", (req, res) => {
+app.post("/LV_updateLikeOfPosttoDataBase", (req, res) => {
     const { Id_Post, Id_User } = req.body;
     try {
         connection.query(

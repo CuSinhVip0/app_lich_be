@@ -50,7 +50,7 @@ app.get("/getLoaiSuKien", (req, res) => {
     }
 });
 
-app.post("/getBirthforUser", (req, res) => {
+app.post("/LV_getBirthforUser", (req, res) => {
     const { UserId } = req.body;
     try {
         connection.query(

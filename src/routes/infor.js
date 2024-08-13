@@ -212,7 +212,7 @@ app.post("/getThongTinNgay", (req, res) => {
     });
 });
 
-app.post("/getGoodDay", (req, res) => {
+app.post("/LV_getGoodDay", (req, res) => {
     const { Id_Su, TimeStart, TimeEnd, Id_User } = req.body;
     try {
         connection.query(
@@ -343,7 +343,7 @@ app.post("/getGoodDay", (req, res) => {
     }
 });
 
-app.get("/getInforCungHoangDao", (req, res) => {
+app.get("/LV_getInforCungHoangDao", (req, res) => {
     try {
         connection.query(
             `

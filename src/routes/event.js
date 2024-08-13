@@ -3,13 +3,20 @@ const app = express();
 const connection = require("../services/index");
 const lunarDate = require("../utils/lunarDate");
 const moment = require("moment");
-app.post("/getEvents", (req, res) => {
+app.post("/LV_getEvents", (req, res) => {
     const { nam } = req.body;
     connection.query(
-        `select  A.*
-        from sukien  A 
-        Where A.State = 0
-        ORDER By A.Thang ASC, A.Ngay ASC`,
+        `
+            Select A.IdMain, A.Ten, A.ChiTiet, A.DuongLich, A.Ngay, A.Thang, A.Nam, A.GioBatDau, A.GioKetThuc, A.Name, A.Id, A.EventSystem,A.UrlPic
+            From 
+            (
+                Select A.Id as IdMain, A.Ten, A.ChiTiet, A.DuongLich, A.Ngay, A.Thang, A.Nam, A.GioBatDau, A.GioKetThuc, B.Name, B.Id,  1 as  EventSystem, A.UrlPic
+                From sukien  A 
+                Inner Join loai_sukien B on A.Id_type_event = B.Id 
+                Where A.State = 0
+            ) A
+            ORDER By A.Thang ASC, A.Ngay ASC    
+        `,
         (err, rows, fields) => {
             if (err) res.status(500).send(err);
             var index = 0;
@@ -42,8 +49,10 @@ app.post("/getEvents", (req, res) => {
                                     ThangAm: lunar[1],
                                     NamDuong: nam,
                                     NamAm: year,
+                                    IsToday: i == new Date().getMonth() + 1 && nam == new Date().getFullYear() ? true : false,
                                 });
-                            } else data.push({ ...x, NgayDuong: j, NgayAm: lunar[0], ThangDuong: i, ThangAm: lunar[1], NamDuong: nam, NamAm: year, thumnail: false });
+                            } else
+                                data.push({ ...x, NgayDuong: j, NgayAm: lunar[0], ThangDuong: i, ThangAm: lunar[1], NamDuong: nam, NamAm: year, thumnail: false, IsToday: false });
                         });
                 }
             }
@@ -53,6 +62,7 @@ app.post("/getEvents", (req, res) => {
 });
 app.post("/getDateEventToSetBookmark", (req, res) => {
     const { Nam, Thang, Key, IdUser } = req.body;
+
     if (Key == 3) {
         const date1 = moment()
             .set("month", Thang - 1)
@@ -72,31 +82,31 @@ app.post("/getDateEventToSetBookmark", (req, res) => {
         const LunarEnd = lunarDate.convertSolar2Lunar(new Date(Nam, date3.get("month") + 1, 0).getDate(), date3.get("month") + 1, date3.get("year"), 7);
         connection.query(
             `
-           Select A.* 
-           From 
-           (
+                Select A.DuongLich, A.Ngay, A.Thang
+                From 
+                (
 
-                Select  A.DuongLich, A.Ngay, A.Thang, A.Nam, A.Id_type_event
-                From sukien  A
-                Where A.Thang in (?,?,?,?,?) and A.State = 0 
-                And A.DuongLich = 1
+                        Select  A.DuongLich, A.Ngay, A.Thang, A.Nam, A.Id_type_event
+                        From sukien  A
+                        Where A.Thang in (?,?,?,?,?) and A.State = 0 
+                        And A.DuongLich = 1
 
-                UNION 
+                        UNION 
 
-                Select B.DuongLich, B.Ngay,B.Thang,B.Nam, B.Id_type_event 
-                From user_event  B
-                Where B.Thang in (?,?,?,?,?) and B.State = 0 and  B.Id_User = ?
-                And B.Nam in (?,?,?,?,?)
+                        Select B.DuongLich, B.Ngay,B.Thang,B.Nam, B.Id_type_event 
+                        From user_event B
+                        Where B.Thang in (?,?,?,?,?) and B.State = 0 and  B.Id_User = ?
+                        And B.Nam in (?,?,?,?,?)
 
-                UNION
+                        UNION
 
-                Select C.DuongLich, C.Ngay,C.Thang,C.Nam, C.Id_type_event
-                From sukien C
-                Where C.Thang  between ? and ? and C.State = 0
-                And C.DuongLich = 0
-            ) A
-            ORDER By A.Thang ASC,A.Ngay ASC
-        `,
+                        Select C.DuongLich, C.Ngay,C.Thang,C.Nam, C.Id_type_event
+                        From sukien C
+                        Where C.Thang  between ? and ? and C.State = 0
+                        And C.DuongLich = 0
+                    ) A
+                    ORDER By A.Thang ASC,A.Ngay ASC
+             `,
             [
                 //
                 date_2.get("month") + 1,
@@ -105,14 +115,13 @@ app.post("/getDateEventToSetBookmark", (req, res) => {
                 date2.get("month") + 1,
                 date3.get("month") + 1,
 
-                IdUser,
                 //
                 date_2.get("month") + 1,
                 date_1.get("month") + 1,
                 date1.get("month") + 1,
                 date2.get("month") + 1,
                 date3.get("month") + 1,
-
+                IdUser,
                 //
                 date_2.get("year"),
                 date_1.get("year"),
@@ -129,26 +138,28 @@ app.post("/getDateEventToSetBookmark", (req, res) => {
                     res.status(500).send(err);
                 }
 
-                const ListSolar = rows.filter((e) => e.DuongLich == 1);
+                var ListSolar = rows.filter((e) => e.DuongLich == 1);
                 const ListLunar = rows.filter((e) => e.DuongLich == 0);
 
                 for (var i = date_2.get("month") + 1; i <= date3.get("month") + 1; i++) {
                     var nam = moment(date_2).add(1, "month").get("year");
                     for (var j = 1; j <= 31; j++) {
-                        const lunar = lunarDate.convertSolar2Lunar(j, i, nam, 7); // chuyen ngay am sang ngay duong
-                        const item = ListLunar.filter((x) => x.Thang == lunar[1] && x.Ngay == lunar[0] && x.DuongLich == 0); // lay ra cac ngay co su kien
+                        const lunar = lunarDate.convertSolar2Lunar(j, i, nam, 7);
+                        const item = ListLunar.filter((x) => x.Thang == lunar[1] && x.Ngay == lunar[0] && x.DuongLich == 0);
                         if (item.length > 0) {
                             ListSolar.push({
-                                DuongLich: 0,
+                                DuongLich: 1,
                                 Ngay: j,
                                 Thang: i,
-                                Nam: nam,
-                                Id_type_event: item[0].Id_type_event,
                             });
                         }
                     }
                 }
                 ListSolar.sort((a, b) => a.Ngay - b.Ngay);
+                ListSolar = ListSolar.filter(
+                    (item, index, self) => index === self.findIndex((t) => t.DuongLich === item.DuongLich && t.Thang === item.Thang && t.Ngay === item.Ngay)
+                );
+
                 const groupedItems = ListSolar.reduce((acc, item) => {
                     const category = item.Thang;
                     if (!acc[category]) {
@@ -202,7 +213,7 @@ app.post("/getDateEventToSetBookmark", (req, res) => {
                     res.status(500).send(err);
                 }
                 // xử lý phần âm
-                const ListSolar = rows.filter((e) => e.DuongLich == 1);
+                var ListSolar = rows.filter((e) => e.DuongLich == 1);
                 const ListLunar = rows.filter((e) => e.DuongLich == 0);
                 for (var i = 1; i <= new Date(Nam, Thang, 0).getDate(); i++) {
                     const lunar = lunarDate.convertSolar2Lunar(i, Thang, Nam, 7); // chuyen ngay am sang ngay duong
@@ -217,6 +228,9 @@ app.post("/getDateEventToSetBookmark", (req, res) => {
                     }
                 }
                 ListSolar.sort((a, b) => a.Ngay - b.Ngay);
+                ListSolar = ListSolar.filter(
+                    (item, index, self) => index === self.findIndex((t) => t.DuongLich === item.DuongLich && t.Thang === item.Thang && t.Ngay === item.Ngay)
+                );
                 res.send(ListSolar);
             }
         );
@@ -234,34 +248,39 @@ app.get("/getAllEvent", (req, res) => {
     );
 });
 
-app.post("/insertEvent", (req, res) => {
-    const { Ten, Ngay, Thang, Nam, GioBatDau, GioKetThuc, ChiTiet, HandleRepeat, Remind, DuongLich, ToDay, ToMonth, ToYear, Type, Id_User } = req.body;
+app.post("/LV_insertEventtoDatabase", (req, res) => {
+    const { Id, Ten, Ngay, Thang, Nam, GioBatDau, GioKetThuc, ChiTiet, HandleRepeat, Remind, DuongLich, ToDay, ToMonth, ToYear, Type, Id_User } = req.body;
     try {
         connection.query(
             `
-                Insert into user_event (Ten,Ngay,Thang,Nam,GioBatDau,GioKetThuc,ChiTiet,HandleRepeat,Remind,DuongLich,ToDay,ToMonth,ToYear,Id_type_event,Id_User) 
-                Values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                Call LV_insertEventtoDatabase (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+
             `,
-            [Ten, Ngay, Thang, Nam, GioBatDau, GioKetThuc, ChiTiet, HandleRepeat, Remind, DuongLich, ToDay, ToMonth, ToYear, Type, Id_User],
+            [Id, Ten, DuongLich, Ngay, Thang, Nam, ToDay, ToMonth, ToYear, ChiTiet, GioBatDau, GioKetThuc, HandleRepeat, Remind, Type, Id_User],
             (err, rows, fields) => {
-                res.send({ status: "successfully", message: "Sự kiện của bạn đã được lưu 😘", id: rows.insertId });
+                if (err) {
+                    console.log(err);
+                    return res.status(500).send({ status: "error", message: "Xảy ra lỗi, vui lòng thử lại 😥" });
+                }
+                if (rows[0] && rows[0][0].id) return res.status(200).send({ status: "oke", message: "Sự kiện của bạn đã được lưu 😘", id: rows[0][0].id });
+                return res.status(200).send({ status: "oke" });
             }
         );
     } catch (err) {
         res.send({ status: "error", message: "Xảy ra lỗi, vui lòng thử lại 😥" });
     }
 });
-app.post("/getTask", (req, res) => {
+app.post("/LV_getTaskfromDatabase", (req, res) => {
     const { Ngay, Thang, Nam, IdUser } = req.body;
 
     const Lunar = lunarDate.convertSolar2Lunar(Ngay, Thang, Nam, 7);
     try {
         connection.query(
             `
-                Select A.IdMain, A.Ten, A.ChiTiet, A.DuongLich, A.Ngay, A.Thang, A.Nam, A.ToDay, A.ToMonth, A.ToYear, A.GioBatDau, A.GioKetThuc, A.HandleRepeat, A.Remind, A.Name, A.Id
+                Select A.IdMain, A.Ten, A.ChiTiet, A.DuongLich, A.Ngay, A.Thang, A.Nam, A.ToDay, A.ToMonth, A.ToYear, A.GioBatDau, A.GioKetThuc, A.HandleRepeat, A.Remind, A.Name, A.Id, A.EventSystem,A.UrlPic
                 From
                 (
-                    Select A.Id as IdMain, A.Ten, A.ChiTiet, A.DuongLich, A.Ngay, A.Thang, A.Nam, A.ToDay, A.ToMonth, A.ToYear, A.GioBatDau, A.GioKetThuc, A.HandleRepeat, A.Remind, B.Name, B.Id
+                    Select A.Id as IdMain, A.Ten, A.ChiTiet, A.DuongLich, A.Ngay, A.Thang, A.Nam, A.ToDay, A.ToMonth, A.ToYear, A.GioBatDau, A.GioKetThuc, A.HandleRepeat, A.Remind, B.Name, B.Id,  0 as EventSystem,'' as UrlPic
                     From user_event A join loai_sukien B on A.Id_type_event = B.Id 
                     Where A.State = 0 and  A.Id_User = ?
                     And 
@@ -283,7 +302,7 @@ app.post("/getTask", (req, res) => {
 
                     UNION 
                     
-                    Select B.Id as IdMain, B.Ten, B.ChiTiet, B.DuongLich, B.Ngay, B.Thang, B.Nam, B.Ngay as ToDay, B.Thang as ToMonth, B.Nam as ToYear, "00:00" as  GioBatDau, "24:00" as GioKetThuc, 0 as HandleRepeat, 0 as Remind, C.Name, C.Id
+                    Select B.Id as IdMain, B.Ten, B.ChiTiet, B.DuongLich, B.Ngay, B.Thang, B.Nam, B.Ngay as ToDay, B.Thang as ToMonth, B.Nam as ToYear, "00:00" as  GioBatDau, "24:00" as GioKetThuc, 0 as HandleRepeat, 0 as Remind, C.Name, C.Id, 1 as EventSystem,B.UrlPic
                     From sukien B join loai_sukien C on B.Id_type_event = C.Id
                     Where 
                     (
@@ -331,6 +350,44 @@ app.post("/getTask", (req, res) => {
     } catch (err) {
         console.log(err);
         res.send({ status: "error", result: "Xảy ra lỗi, vui lòng thử lại 😥" });
+    }
+});
+
+app.post("/LV_removeTaskfromDatabase", (req, res) => {
+    const { Id } = req.body;
+    try {
+        connection.query("Delete from user_event where Id = ?", [Id], (err, rows, fields) => {
+            if (err) {
+                console.log(err);
+                return res.status(500).send({ status: "error" });
+            }
+            return res.status(200).send({ status: "oke" });
+        });
+    } catch (err) {
+        console.log(err);
+        return res.status(500).send({ status: "error" });
+    }
+});
+
+app.post("/LV_getInforTaskfromDatabase", (req, res) => {
+    const { Id, Type } = req.body;
+    console.log("🚀 ~ app.post ~  Id, Type:", Id, Type);
+    try {
+        connection.query("Call LV_getInforTaskfromDatabase (?,?)", [Id, Type], (err, rows, fields) => {
+            if (err) {
+                console.log("🚀 ~ app.LV_spGetInforFromDatabase ~ err:", err);
+                return res.status(500).send({ status: "error" });
+            }
+            if (rows.length > 0 && rows[0])
+                return res.status(200).send({
+                    status: "oke",
+                    data: rows[0][0],
+                });
+            return res.status(200).send({ status: "error" });
+        });
+    } catch (err) {
+        console.log(err);
+        return res.status(500).send({ status: "error" });
     }
 });
 
